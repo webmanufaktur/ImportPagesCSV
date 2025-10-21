@@ -40,7 +40,7 @@ class ImportPagesCSV extends Process implements Module {
 	public static function getModuleInfo() {
 		return array(
 			'title' => 'Import Pages from CSV', 
-			'version' => 114, 
+			'version' => 115, 
 			'summary' => 'Import CSV files to create ProcessWire pages.',
 			'author' => 'Ryan Cramer',
 			'icon' => 'table',
@@ -243,7 +243,7 @@ class ImportPagesCSV extends Process implements Module {
 		$f->name = 'csv_enclosure';
 		$f->label = 'Fields enclosed by';
 		$f->description = "If you aren't sure, it is recommended you leave it at the default (\").";
-		$f->attr('value', $this->sessionGet('csvEnclosure', '"'));
+		$f->attr('value', $this->getCsvEnclosure());
 		$f->attr('maxlength', 1);
 		$f->attr('size', 1);
 		$f->columnWidth = 33;
@@ -318,7 +318,12 @@ class ImportPagesCSV extends Process implements Module {
 		$this->sessionSet('csvTemplate', (int) $form->getChildByName('template')->value);
 		$this->sessionSet('csvParent', (int) $form->getChildByName('parent_id')->value); 
 		$this->sessionSet('csvDelimeter', $form->getChildByName('csv_delimeter')->value == 2 ? "\t" : ",");
-		$this->sessionSet('csvEnclosure', substr($form->getChildByName('csv_enclosure')->value ?? '', 0, 1)); 
+		$enclosureInput = $form->getChildByName('csv_enclosure')->value ?? '';
+		$enclosure = substr($enclosureInput, 0, 1);
+		if(!is_string($enclosure) || $enclosure === '' || strlen($enclosure) !== 1) {
+			$enclosure = '"';
+		}
+		$this->sessionSet('csvEnclosure', $enclosure);
 		$this->sessionSet('csvDuplicate', (int) $form->getChildByName('csv_duplicate')->value);
 		$this->sessionSet('csvMaxRows', (int) $form->getChildByName('csv_max_rows')->value);
 		$this->sessionSet('csvAddPageRefs', (int) $form->getChildByName('csv_add_page_refs')->value); 
@@ -376,7 +381,7 @@ class ImportPagesCSV extends Process implements Module {
 		$fp = fopen($this->csvFilename, "r"); 
 		if($fp === false) throw new WireException("Unable to open CSV file"); 
 		
-		$data = fgetcsv($fp, 0, $this->sessionGet('csvDelimeter'), $this->sessionGet('csvEnclosure'));
+		$data = fgetcsv($fp, 0, $this->sessionGet('csvDelimeter'), $this->getCsvEnclosure());
 
 		foreach($data as $key => $value) {
 
@@ -411,7 +416,7 @@ class ImportPagesCSV extends Process implements Module {
 		// Add CSV columns as options
 		$fp2 = fopen($this->csvFilename, "r");
 		if($fp2 !== false) {
-			$headers = fgetcsv($fp2, 0, $this->sessionGet('csvDelimeter'), $this->sessionGet('csvEnclosure'));
+			$headers = fgetcsv($fp2, 0, $this->sessionGet('csvDelimeter'), $this->getCsvEnclosure());
 			foreach($headers as $key => $header) {
 				$f->addOption("csv{$key}", $header);
 			}
@@ -436,7 +441,7 @@ class ImportPagesCSV extends Process implements Module {
 		// Add CSV columns as options
 		$fp3 = fopen($this->csvFilename, "r");
 		if($fp3 !== false) {
-			$headers = fgetcsv($fp3, 0, $this->sessionGet('csvDelimeter'), $this->sessionGet('csvEnclosure'));
+			$headers = fgetcsv($fp3, 0, $this->sessionGet('csvDelimeter'), $this->getCsvEnclosure());
 			foreach($headers as $key => $header) {
 				$f->addOption("csv{$key}", $header);
 			}
@@ -483,7 +488,7 @@ class ImportPagesCSV extends Process implements Module {
 		$rowNum = 0;
 		$maxRows = $this->sessionGet('csvMaxRows'); 
 		$csvDelimeter = $this->sessionGet('csvDelimeter', ',');
-		$csvEnclosure = $this->sessionGet('csvEnclosure', '"');
+		$csvEnclosure = $this->getCsvEnclosure();
 
 		while(($data = fgetcsv($fp, 0, $csvDelimeter, $csvEnclosure)) !== false) {
 			$cnt = count($data); 
@@ -833,6 +838,20 @@ class ImportPagesCSV extends Process implements Module {
 			if($valid) break;
 		}
 		return $valid;
+	}
+
+	/**
+	 * Get a valid CSV enclosure character from session, applying fallback when empty
+	 *
+	 * @return string
+	 */
+	protected function getCsvEnclosure() {
+		$enclosure = $this->sessionGet('csvEnclosure');
+		if(!is_string($enclosure) || strlen($enclosure) !== 1) {
+			$enclosure = '"';
+			$this->sessionSet('csvEnclosure', $enclosure);
+		}
+		return $enclosure;
 	}
 
 	/**
