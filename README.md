@@ -5,6 +5,9 @@ or modify existing pages. The module requires ProcessWire 3.0.123 or newer.
 This is an admin/development tool that is recommended only for use by the 
 superuser or developer. 
 
+Version 1.14 adds support for per-row parents, safer duplicate handling, and stricter
+validation during imports.
+
 The following Fieldtypes are supported for importing, as well as most types 
 derived from them: 
 
@@ -46,7 +49,37 @@ field has one or more pages selected for the "Parent" setting on the Details tab
 import to be able to create paes, there must also be a single Template selected on the "Template" 
 setting. 
 
+## Recent enhancements (v1.14)
+
+### Custom identifier field selection
+- Choose any CSV column as the identifier used to find existing pages, rather than being limited to titles.
+- Match rows against legacy IDs, custom fields, or other unique values to avoid creating duplicates.
+- Step 2 now requires choosing an identifier so the importer can either modify a matched page or create a new one when no match is found.
+
+**How to use**
+1. In Step 2, pick `Identifier Column` and choose the CSV column that contains the values you want to match.
+2. The module sanitizes the values and searches for existing pages whose titles match the selected column.
+3. When a page is found it is modified (based on the duplicate handling option); otherwise a new page is created.
+
+### Dynamic parent page selection
+- Each CSV row can supply its own parent page via a `parent_id` column.
+- Rows without a `parent_id` fallback to the default parent chosen in Step 1.
+- Parent IDs are validated for existence and edit permissions before importing.
+
+**How to use**
+1. In Step 2, pick `Parent ID Column` and choose the CSV column that contains parent page IDs.
+2. Supply integer page IDs in the CSV; rows with valid IDs use those parents, others use the default.
+
+### Improved title field workflow
+- Identifier values are validated before lookups run, so empty identifiers stop the row with a helpful error.
+- Page names are generated from title values after all CSV data is assigned, keeping the title-to-name flow consistent.
+- Existing pages retain their names; only new pages must resolve to a unique name.
+
+### PHP 8.2+ compatibility and hardening
+- Dropped the deprecated `auto_detect_line_endings` usage and added null-coalescing operators where needed.
+- Eliminated `strlen(null)` warnings and ensured all string operations account for nullable CSV data.
+- Retained backward compatibility while keeping imports quiet on modern PHP versions.
+
 
 ---
 Copyright 2011-2021 by Ryan Cramer for ProcessWire
-
